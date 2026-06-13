@@ -1,0 +1,1 @@
+require(script:WaitForChild('Shared'));script.Parent = game:GetService('TeleportService');
