@@ -27,6 +27,6 @@ return {
 		-- UserId Here --
 	},
 	Keybind = Enum.KeyCode.F2,
-	Version = '1.0.1',
+	Version = '1.0.2',
 	Contributors = {'Zliption'}
 };
