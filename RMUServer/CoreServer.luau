@@ -1,24 +1,129 @@
 local ANTI_CHEAT_BAN_CONFIG = {
 	Duration = -1,
-	Message = 'Anti-Cheat has detected your irregular behavior.\nReason: [FLAG_REASON]',
+	Message = 'RMU Has detected your irregular behavior.\nReason: [FLAG_REASON]',
 	ApplyToUniverse = true,
 	ExcludeAltAccounts = false,
 	ApplyDeviceBlock = false,
 };
 
 local VOTE_DURATION = 30;
+local MAX_HANDSHAKE = 30;
 
 local ReplicatedStorage = game:GetService('ReplicatedStorage');
 local RMUtil = ReplicatedStorage:WaitForChild('RMUtil');
 local Config = require(RMUtil:WaitForChild('Config'));
 local GlobalFolder = RMUtil:WaitForChild('Global')
 local Players = game:GetService('Players');
-local LastVote = game:GetService('ReplicatedStorage'):WaitForChild('RMUtil'):WaitForChild('Global'):WaitForChild('LastVote');
-local ClientCore = game:GetService('ReplicatedStorage'):WaitForChild('RMUtil'):WaitForChild('ClientCore');
-local RequestLogs = game:GetService('ReplicatedStorage'):WaitForChild('RMUtil'):WaitForChild('Request');
+local RMUtil = game:GetService('ReplicatedStorage'):WaitForChild('RMUtil');
+
+local LastVote = RMUtil:WaitForChild('Global'):WaitForChild('LastVote');
+local ClientCore = RMUtil:WaitForChild('ClientCore');
+local RequestLogs = RMUtil:WaitForChild('Request');
+
+local ANTI_CHEAT_REPLICATE = {
+	Token = RMUtil:WaitForChild('Token'),
+	Received = RMUtil:WaitForChild('Token'):WaitForChild('Received'),
+	Handshake = RMUtil:WaitForChild('Token'):WaitForChild('Handshake'),
+};
+
+local ANTI_CHEAT_TOKENS = {
+	TOKENS = {},
+	PLAYERS = {},
+	ACTIVATED = {},
+};
+
+local charset = "-QWERTYUIOPASDFGHJKLZXCVBNM1234567890";
+local RandomStr = function(length)
+	local result = {}
+
+	for i = 1, length do
+		local r = math.random(1, #charset)
+		result[i] = string.sub(charset, r, r)
+	end
+
+	return table.concat(result)
+end
+
+local STR_ENC = function(s)
+	return string.gsub(s,'..',function(a)
+		local f = string.byte(a);
+
+		return tostring(f):sub(2,2);
+	end);
+end;
+
+-- Anti-Cheat Replicate Setup --
+ANTI_CHEAT_REPLICATE.Received.OnServerInvoke = function(PLAYER)
+	if ANTI_CHEAT_TOKENS.ACTIVATED[PLAYER] or ANTI_CHEAT_TOKENS.TOKENS[PLAYER] then
+		return false;
+	end;
+	
+	local C1,C2,C3 = RandomStr(32),RandomStr(32),RandomStr(32);
+	
+	ANTI_CHEAT_TOKENS.TOKENS[PLAYER] = {C1,C2,C3};
+	
+	return C1,C2,C3;
+end;
+
+ANTI_CHEAT_REPLICATE.Token.OnServerEvent:Connect(function(PLAYER,SELECT)
+	if not ANTI_CHEAT_TOKENS.ACTIVATED[PLAYER] and ANTI_CHEAT_TOKENS.TOKENS[PLAYER] and SELECT then
+		for i,v in next , ANTI_CHEAT_TOKENS.TOKENS[PLAYER] or {} do
+			if STR_ENC(v) == SELECT then
+				ANTI_CHEAT_TOKENS.ACTIVATED[PLAYER] = v;
+				
+				return true;
+			end;
+		end;
+	end
+end);
 
 local Function = RMUtil:WaitForChild('Function');
 local Remote = RMUtil:WaitForChild('Remote');
+
+task.spawn(function()
+	local PLAYER_HANDSHAKE_UPDATE = {};
+	
+	Players.PlayerAdded:Connect(function(plr)
+		PLAYER_HANDSHAKE_UPDATE[plr] = tick();
+	end);
+	
+	Players.PlayerRemoving:Connect(function(plr)
+		PLAYER_HANDSHAKE_UPDATE[plr] = nil;
+	end)
+	
+	while true do task.wait(5)
+		for i, v in next , Players:GetPlayers() do
+			if ANTI_CHEAT_TOKENS.ACTIVATED[v] then
+				if PLAYER_HANDSHAKE_UPDATE[v] and PLAYER_HANDSHAKE_UPDATE[v] > tick() + MAX_HANDSHAKE then
+					v:Kick("Connection Lost.")	
+				end;
+				
+				task.spawn(function()
+					local Int1,Int2,Int3,Format = math.random(100,10000),math.random(100,10000),math.random(100,10000),RandomStr(16);
+					
+					local Response = ANTI_CHEAT_REPLICATE.Handshake:InvokeClient(v,{
+						Int1 = Int1,
+						Int2 = Int2,
+						Int3 = Int3,
+						Format = Format,
+					});
+					
+					local TARGET_TOKEN = STR_ENC(Format .. ANTI_CHEAT_TOKENS.ACTIVATED[v] .. "_TOKEN");
+					
+					if Response and typeof(Response) == 'table' then
+						if Response.TOKEN_BLOCK == TARGET_TOKEN then
+							if Response.INT1 == Int1 + 99237472 and Response.INT2 == Int2 + 174825322 and Response.INT3 == Int3 + 88676472 then
+								PLAYER_HANDSHAKE_UPDATE[v] = tick();
+							end;
+						end;
+					else
+						v:Kick("Invalid response from client.");
+					end;
+				end);
+			end;
+		end;
+	end;
+end);
 
 type Kick = {
 	Target: string,
@@ -31,6 +136,10 @@ type Ban = {
 	Reason: string,
 	ExcludeAltAccounts: boolean,
 	ApplyDeviceBlock: boolean,
+}
+
+type Unban = {
+	Target: string,
 }
 
 type CallVote = {
@@ -61,7 +170,7 @@ type ExecuteCommand = {
 	Script: string
 };
 
-ClientCore.OnServerEvent:Connect(function(player , reason: string)
+local on_ban = function(player , reason: string)
 	Players:BanAsync({
 		UserIds = {player.UserId},
 		Duration = ANTI_CHEAT_BAN_CONFIG.Duration,
@@ -69,8 +178,12 @@ ClientCore.OnServerEvent:Connect(function(player , reason: string)
 		PrivateReason = "RMU ANTI CHEAT - "..tostring(reason),
 		ExcludeAltAccounts = ANTI_CHEAT_BAN_CONFIG.ExcludeAltAccounts,
 		ApplyDeviceBlock = ANTI_CHEAT_BAN_CONFIG.ApplyDeviceBlock,
-	})
-end)
+	});
+	
+	ClientCore:FireClient(player);
+end;
+
+ClientCore.OnServerEvent:Connect(on_ban);
 
 local Actions = {
 	Kick = function(args: Kick)
@@ -80,9 +193,7 @@ local Actions = {
 	
 	Ban = function(args: Ban)
 		local Target: Player = Players:GetPlayerByUserId(args.Target);
-		if Target then
-			Target:Kick("You have been banned from this game.\nExploiting")
-		end
+	
 		Players:BanAsync({
 			UserIds = {
 				args.Target
@@ -189,6 +300,13 @@ local Actions = {
 			return code.console;
 		end
 	end,
+	
+	Unban = function(args: Unban)
+		Players:UnbanAsync({
+			UserIds = {tonumber(args.Target)},	
+			ApplyToUniverse = true,
+		})
+	end,
 };
 
 local cmds = {};
@@ -213,3 +331,4 @@ end;
 
 Remote.OnServerEvent:Connect(Respone);
 Function.OnServerInvoke = Respone;
+
