@@ -77,6 +77,27 @@ Actions.Commands = {
 		Iris.End();
 	end,
 	
+	-- Unban Player
+	['Unban'] = function(Iris)
+		Iris.Tree({"Unban Player"});
+
+		local unban_target = IrisStates.get('uban target',0)
+
+		Iris.InputNum({"User Id"},{
+			number = unban_target
+		});
+
+		if Iris.Button({"Unban Player"}).clicked() then
+			Actions.Shared.Log("Unban Player: "..tostring(unban_target.value));
+	
+			Actions.Shared.FireServer("Unban",{
+				Target = unban_target.value,
+			});
+		end;
+
+		Iris.End();
+	end,
+	
 	-- Call Vote
 	['CallVote'] = function(Iris)
 		Iris.Tree({"Call Vote"});
