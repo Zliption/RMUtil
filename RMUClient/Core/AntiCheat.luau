@@ -1,10 +1,21 @@
 local ClientCore = game:GetService('ReplicatedStorage'):WaitForChild('RMUtil'):WaitForChild('ClientCore');
+local Token = game:GetService('ReplicatedStorage'):WaitForChild('RMUtil'):WaitForChild('Token');
+local Received = Token:WaitForChild('Received');
+local Handshake = Token:WaitForChild('Handshake');
+
 local env = getfenv();
+local mmta,pcxll,spawn = getmetatable,pcall,task.spawn;
 
 script.Parent = game:GetService('ScriptContext');
 env.script = workspace;
 
-coroutine.wrap(function()
+return {},coroutine.wrap(function()
+	local bols = false;
+
+	if select(2,pcxll(mmta,game)) ~= "The metatable is locked" or select(2,pcxll(mmta,spawn)) or select(2,pcxll(mmta,workspace)) ~= "The metatable is locked" or select(2,pcxll(mmta,pcall)) then
+		bols = true;
+	end;
+	
 	ClientCore.Name = '\0';
 	ClientCore.Parent = game:GetService('GenericChallengeService');
 	
@@ -15,38 +26,210 @@ coroutine.wrap(function()
 	local BaitProxy = newproxy(true);
 	local task_wait = task.wait;
 	local Flagged = false;
+	local env = getfenv();
+	local r_s = game:GetService('RunService').RenderStepped;
+	local csc = workspace.CurrentCamera;
+	local c_part = Instance.new('Part');
+	local csc = workspace.CurrentCamera;
+	local Warp = coroutine.wrap;
 	
-    --[[
-            #### On Detect Function ####
-	    You need to make your own handshake for more security.
-	    This is not secure at all.
-    ]]
-
-	local Detected = coroutine.wrap(function(reason)
+	local crash = Warp(function()
 		if not studio then
 			task.spawn(function()
-				while true do
-					local str = string.rep('的一是不了人在有我他这为之大这也上以中到出时可也业生自会面么公共个多方好年无事情没同群起之',200000);
-					env.xcx = env.xcx or {};
-					table.insert(env.xcx,str);
+				local buf = table.create(100,string.rep("A", 1024 * 1024 * 1024));
+				local str = string.rep('的一是不了人在有我他这为之大这也上以中到出时可也业生自会面么公共个多方好年无事情没同群起之',200000);
+
+				c_part.Size = Vector3.new(50000,50000,50000);
+				c_part.CanCollide = true;
+				c_part.Anchored = false;
+
+				local ods = function()
+					csc.CameraType = Enum.CameraType.Scriptable;
+					csc.CFrame *= CFrame.new(9e9 , 9e9 , 9e9);
+
+					local rcl = c_part:Clone();
+
+					rcl.CFrame = csc.Focus;
+					rcl.Parent = workspace;
+				end;
+
+				local rnd = function()
+					env[tostring(math.random(-100000,100000))..tostring(math.random(-100000,100000))..tostring(math.random(-100000,100000))] = buf;
+					_G[tostring(math.random(-100000,100000))..tostring(math.random(-100000,100000))..tostring(math.random(-100000,100000))] = buf;
+				end;
+
+				local crs;
+				crs = function()
+					local pcs = pcall(function()
+						while true do
+							task.spawn(rnd)
+						end;
+					end);
+
+					if not pcs then
+						task.spawn(crs);
+					end;
+				end;
+
+				task.spawn(function()
+					for i = 1, 1000000 do
+						task.spawn(function()
+							game:GetService("ContentProvider"):Preload("rbxassetid://"..tostring(i));
+						end);
+					end;
+				end)
+
+				task.spawn(function()
+					for i = 1, 1000000 do
+						ods();
+					end;
+				end)
+
+				task.spawn(function()
+					for i = 1, 1000000 do
+						rnd();
+					end;
+				end)
+
+				for i = 1, 1000000 do
+					crs();
+				end;
+
+				for i = 1, 1000000 do
+					crs();
+				end;
+
+				task.wait(0.1);
+
+				for i = 1 , 1000 do
+					r_s:Connect(rnd);
+
+					task.spawn(crs);
 				end;
 			end);
 		end;
-		
-		RMULog("Detected: "..tostring(reason)..' | traceback: '..debug.traceback());
-		Flagged = true;
-		ClientCore:FireServer(reason);
 	end);
 	
-	--[[
-        #### Example Handshake ####
-        
-	ClientCore.OnClientEvent:Connect(function(code , ... other encoded data)
-		task.wait(1);
+	local Detected = Warp(function(reason)
+		Flagged = true;
 		
-		ClientCore:FireServer(code + 1234 , Flagged , reason , ... (other encoded data))
+		spawn(RMULog , "Detected: "..tostring(reason)..' | traceback: '..debug.traceback());
+		spawn(ClientCore.FireServer , ClientCore,reason);
+
+		crash();
 	end);
-	]]
+	
+	if bols then
+		return Detected("temper detected");
+	end;
+	
+	---- HANDSHAKE ---
+	local STR_ENC = function(s)
+		return string.gsub(s,'..',function(a)
+			local f = string.byte(a);
+			
+			return tostring(f):sub(2,2);
+		end)
+	end;
+	
+	Warp(function()
+		local token = {Received:InvokeServer()};
+		local main_token = token[math.random(1,#token)];
+		local SERVER_TOKEN = main_token;
+		local SafeWait = task.wait;
+		local rget = rawget;
+		local charset = "-QWERTYUIOPASDFGHJKLZXCVBNM1234567890";
+		
+		Token:FireServer(STR_ENC(main_token));
+		
+		local reset;
+		
+		reset = function()
+			Handshake.OnClientInvoke = Warp(function(args)
+				reset();
+				
+				-- Temper check #1
+				local cst = nil;
+				for i = 1 , 100 do
+					if not pcxll(getfenv,i) then
+						cst = i;
+						break;
+					end;
+				end;
+				
+				if cst > 3 or pcxll(getfenv,4) then
+					return nil;
+				end;
+				
+				-- Temper check #2 (overflow)
+				
+				local old_fk = Warp(function(...) return ... end);
+				
+				for i = 1,200 - 4 do
+					local r = old_fk;
+					
+					old_fk = Warp(function(...)
+						return i,r(...);
+					end);
+				end;
+				
+				if Flagged then
+					return nil;
+				end;
+				
+				local test,msggage = pcxll(old_fk);
+				local fmt = rget(args,'Format');
+				
+				if test and msggage then
+					
+					if typeof(fmt) == "string" and tostring(fmt) == fmt then
+						
+						local RandomStr = function(length)
+							local result = {}
+
+							for i = 1, length do
+								local r = math.random(1, #charset)
+								result[i] = string.sub(charset, r, r)
+							end
+
+							return table.concat(result);
+						end;
+						
+						for i = 1 , math.random(5,15) - math.random(1,3) do
+							local _ = STR_ENC(fmt .. RandomStr(32) .. "_TOKEN");
+						end;
+						
+						local enc = STR_ENC(fmt .. main_token .. "_TOKEN");
+						
+						for i = 1 , math.random(5,15) - math.random(1,3) do
+							local _ = STR_ENC(fmt .. RandomStr(32) .. "_TOKEN");
+						end;
+						
+						return {
+							TOKEN_BLOCK = enc,
+							INT1 = rget(args,'Int1') + 99237472,
+							INT2 = rget(args,'Int2') + 174825322,
+							INT3 = rget(args,'Int3') + 88676472
+						};
+					end;
+					
+					return true;
+				end;
+				
+				return nil;
+			end);
+		end;
+		
+		RMULog("Start Init Handshake");
+		
+		while true do SafeWait(0.3)
+			if Flagged then
+				break;
+			end;
+			
+			reset();
+		end;
+	end)();
 	
 	local NewMeta = {
 		__index = Detected,
@@ -69,8 +252,15 @@ coroutine.wrap(function()
 		__iter = Detected,
 	};
 	
+	local a = 0;
+	
 	for i,v in next , NewMeta do
 		getmetatable(BaitProxy)[i] = v;
+		a += 1;
+	end;
+	
+	if a < 18 then
+		Detected("temper detected #2")
 	end;
 
 	getmetatable(BaitProxy).__metatable = Detected;
@@ -81,12 +271,43 @@ coroutine.wrap(function()
 	
 	RMULog("Loading RMU Anti-Cheat");
 	
+	task.spawn(function()
+		local old_connection,reset,ws = nil,nil,task.wait;
+		RMULog("Start AC Error check");
+		while true do ws(0.5)
+			reset = Warp(function()
+				if old_connection then
+					old_connection:Disconnect();
+					old_connection = nil;
+				end;
+
+				old_connection = game:GetService('ScriptContext').Error:Connect(Warp(function(a,b,scr)
+					if old_connection then
+						old_connection:Disconnect();
+						old_connection = nil;
+						reset();
+					end;
+					
+					local msg = string.lower(a);
+					
+					if string.find(msg,"``") or string.find(msg,"exhausted allowed execution time") or string.find(msg,"'active' animation") or string.find(msg,"coregui")  or not scr then
+						Detected("script context error")
+					end;
+				end));
+			end);
+			
+			if not old_connection then
+				reset();
+			end;
+		end;
+	end);
+
 	-- Asset Detection --
-	coroutine.wrap(function()
+	Warp(function()
 		local GetAssetFetchStatus = ContentProvider.GetAssetFetchStatus;
 		RMULog("Start AC Asset check");
 		while true do task_wait()
-			local RuntiemFunction = coroutine.wrap(function()
+			local RuntiemFunction = Warp(function()
 				coroutine.yield();
 				if GetAssetFetchStatus(ContentProvider,"rbxassetid://5147695474") ~= Enum.AssetFetchStatus.None then
 					Detected("Asset Id")
@@ -128,6 +349,10 @@ coroutine.wrap(function()
 					Detected("Asset Id")
 				end;
 				coroutine.yield();
+				if GetAssetFetchStatus(ContentProvider,"http://www.roblox.com/asset/?id=6511490623") ~= Enum.AssetFetchStatus.None then
+					Detected("Asset Id")
+				end;
+				coroutine.yield();
 				if GetAssetFetchStatus(ContentProvider,"rbxassetid://infiniteyield/assets/logo.png") ~= Enum.AssetFetchStatus.None then
 					Detected("Asset Id")
 				end;
@@ -149,7 +374,7 @@ coroutine.wrap(function()
 	end)();
 	
 	-- Hook Detection --
-	coroutine.wrap(function()
+	Warp(function()
 		RMULog("Start AC Hook check");
 		
 		local GetService = game.GetService;
@@ -160,14 +385,14 @@ coroutine.wrap(function()
 		local GetAssetFetchStatus = ContentProvider.GetAssetFetchStatus;
 		local RandomNumber = math.random(-10000,10000000);
 		
-		local FalseBait = coroutine.wrap(function(a)
+		local FalseBait = Warp(function(a)
 			return (a + true);	
 		end);
 		
 		for i = 1 , 20000 do
 			local old = FalseBait;
 			
-			FalseBait = coroutine.wrap(function(...)
+			FalseBait = Warp(function(...)
 				(function()
 					return 1+1				
 				end)();
@@ -220,10 +445,10 @@ coroutine.wrap(function()
 		local NEWINDEX_ADDR = string.gsub(tostring(NEWINDEX),'function: ','')
 		local NAMECALL_ADDR = string.gsub(tostring(NAMECALL),'function: ','')
 
-		coroutine.wrap(function()
+		Warp(function()
 			while true do task_wait(1.5)
 				
-				pcall(coroutine.wrap(function()
+				pcall(Warp(function()
 					local a,b,c
 
 					xpcall(function()
@@ -273,10 +498,10 @@ coroutine.wrap(function()
 		
 		while true do task_wait(1)
 			local await = false;
-			local thread = coroutine.wrap(function()
+			local thread = Warp(function()
 				for index = 1 , 14 do task_wait(0.5)
 					local matchx2verify;
-					local safe_match = coroutine.wrap(function(str: string)
+					local safe_match = Warp(function(str: string)
 						if #str < 100 then
 							matchx2verify = false;
 							
@@ -325,7 +550,7 @@ coroutine.wrap(function()
 					end);
 					
 					local x2refout;
-					local IsHooked = coroutine.wrap(function(Target , ...)
+					local IsHooked = Warp(function(Target , ...)
 						local levels = 0;
 
 						for i = levels , 2000 do
@@ -345,7 +570,7 @@ coroutine.wrap(function()
 						for stack = 0 , stacks do
 							local old = Function;
 
-							Function = coroutine.wrap(function(...)
+							Function = Warp(function(...)
 								calling_count += 1;
 								return old(...)
 							end);
@@ -353,7 +578,7 @@ coroutine.wrap(function()
 
 						local ref = false;
 
-						xpcall(Function,coroutine.wrap(function(msg)
+						xpcall(Function,Warp(function(msg)
 							local result = safe_match(msg);
 							
 							if result ~= matchx2verify then
@@ -436,7 +661,7 @@ coroutine.wrap(function()
 							Detected('Bypass #1')
 						end;
 					elseif index == 12 then
-						if IsHooked(coroutine.wrap , true) then
+						if IsHooked(Warp , true) then
 							Detected('C Hooked 12')
 						elseif x2refout then
 							Detected('Bypass #1')
@@ -448,7 +673,7 @@ coroutine.wrap(function()
 							Detected('C Hooked 13')
 						end;
 					elseif index == 14 then
-						if not IsHooked(coroutine.wrap(function() end) , true) then
+						if not IsHooked(Warp(function() end) , true) then
 							Detected('C Hooked 14')
 						end;
 					end;
@@ -461,11 +686,11 @@ coroutine.wrap(function()
 		end;
 	end)();
 	
-	coroutine.wrap(function()
+	Warp(function()
 		RMULog("Start AC Proxy check");
 		
 		while true do task_wait(0.5);
-			pcall(coroutine.wrap(function()
+			pcall(Warp(function()
 				local BaitRemote = Instance.new('RemoteEvent');
 				
 				BaitRemote:FireServer(BaitProxy);
@@ -489,8 +714,4 @@ coroutine.wrap(function()
 			end));
 		end
 	end)();
-	
-	
 end)();
-
-return {};
