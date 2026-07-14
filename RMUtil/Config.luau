@@ -5,10 +5,9 @@ return {
 		},
 		{
 			Name = "Ban",
-			LockedUsers = {
-				-- Only allow these users to use the command (User Id) --
-				1
-			},
+		},
+		{
+			Name = "Unban",
 		},
 		{
 			Name = "CallVote",
@@ -28,6 +27,6 @@ return {
 		-- UserId Here --
 	},
 	Keybind = Enum.KeyCode.F2,
-	Version = '1.0.0',
+	Version = '1.0.1',
 	Contributors = {'Zliption'}
 };
